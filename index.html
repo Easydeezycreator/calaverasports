@@ -199,6 +199,8 @@
   <!-- HERO destacado -->
   <div id="hero" class="hero" style="display:none"></div>
 
+  <div class="afil" id="afil"></div>
+
   <div id="status" class="status"></div>
   <div id="note" class="note"></div>
 
@@ -212,8 +214,6 @@
   <div id="list"></div>
 
 </div>
-
-<div class="afil" id="afil"></div>
 
 <footer id="footer"></footer>
 
@@ -378,7 +378,7 @@
     document.getElementById("btnEn").classList.toggle("on",lang==="en");
     document.getElementById("note").innerHTML=T().note;
     document.getElementById("search").placeholder=T().searchPh;
-    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v16<br>"+
+    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v17<br>"+
       '<img class="visit-counter" src="https://hits.sh/calaverasports.com.svg?style=flat-square&label='+(lang==="es"?"Visitas":"Visits")+'&color=37e07a&labelColor=0d1117" alt="" style="margin-top:9px;height:22px" onerror="this.style.display=\'none\'">';
     document.getElementById("afil").innerHTML=(lang==="es"
         ? '📺 <b>¿Verlo en tu tele?</b> Con un Fire TV Stick abres estas apps de deporte en tu televisor → '
