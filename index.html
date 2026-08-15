@@ -241,11 +241,32 @@
       query:m=>"where to watch "+m+" free live",locale:"en"}
   };
 
-  const ZONAS=[{v:"auto"},{v:"Europe/Madrid",label:"🇪🇸 España (Madrid)"},
-    {v:"America/Mexico_City",label:"🇲🇽 México (CDMX)"},{v:"America/Bogota",label:"🇨🇴 Colombia (Bogotá)"},
-    {v:"America/Lima",label:"🇵🇪 Perú (Lima)"},{v:"America/Argentina/Buenos_Aires",label:"🇦🇷 Argentina (Bs. As.)"},
-    {v:"America/Santiago",label:"🇨🇱 Chile (Santiago)"},{v:"America/New_York",label:"🇺🇸 USA East (New York)"},
-    {v:"America/Los_Angeles",label:"🇺🇸 USA West (Los Angeles)"},{v:"Europe/London",label:"🇬🇧 UK (London)"}];
+  const ZONAS=[{v:"auto"},
+    {v:"Europe/Madrid",label:"🇪🇸 España (Madrid)"},
+    {v:"America/Mexico_City",label:"🇲🇽 México (CDMX)"},
+    {v:"America/Bogota",label:"🇨🇴 Colombia (Bogotá)"},
+    {v:"America/Lima",label:"🇵🇪 Perú (Lima)"},
+    {v:"America/Argentina/Buenos_Aires",label:"🇦🇷 Argentina (Bs. As.)"},
+    {v:"America/Santiago",label:"🇨🇱 Chile (Santiago)"},
+    {v:"America/Guayaquil",label:"🇪🇨 Ecuador (Quito)"},
+    {v:"America/Caracas",label:"🇻🇪 Venezuela (Caracas)"},
+    {v:"America/Montevideo",label:"🇺🇾 Uruguay (Montevideo)"},
+    {v:"America/Asuncion",label:"🇵🇾 Paraguay (Asunción)"},
+    {v:"America/La_Paz",label:"🇧🇴 Bolivia (La Paz)"},
+    {v:"America/Sao_Paulo",label:"🇧🇷 Brasil (São Paulo)"},
+    {v:"America/Guatemala",label:"🇬🇹 Guatemala"},
+    {v:"America/Costa_Rica",label:"🇨🇷 Costa Rica"},
+    {v:"America/Panama",label:"🇵🇦 Panamá"},
+    {v:"America/Santo_Domingo",label:"🇩🇴 Rep. Dominicana"},
+    {v:"America/Puerto_Rico",label:"🇵🇷 Puerto Rico"},
+    {v:"America/New_York",label:"🇺🇸 USA Este (New York)"},
+    {v:"America/Chicago",label:"🇺🇸 USA Central (Chicago)"},
+    {v:"America/Denver",label:"🇺🇸 USA Montaña (Denver)"},
+    {v:"America/Los_Angeles",label:"🇺🇸 USA Oeste (Los Angeles)"},
+    {v:"Europe/London",label:"🇬🇧 UK (London)"},
+    {v:"Europe/Paris",label:"🇫🇷 Francia (París)"},
+    {v:"Europe/Berlin",label:"🇩🇪 Alemania (Berlín)"},
+    {v:"Europe/Rome",label:"🇮🇹 Italia (Roma)"}];
 
   const SPORTS=[{k:"todos",es:"Todos",en:"All"},{k:"futbol",es:"Fútbol",en:"Soccer"},
     {k:"baloncesto",es:"Baloncesto",en:"Basketball"},{k:"tenis",es:"Tenis",en:"Tennis"},
@@ -259,7 +280,7 @@
     {k:"natacion",es:"Natación",en:"Swimming"},{k:"otros",es:"Otros",en:"Other"}];
   const sName=k=>{const s=SPORTS.find(x=>x.k===k)||SPORTS[SPORTS.length-1];return s;};
 
-  const LEAGUES=["4335","4328","4332","4331","4334","4480","4387","4391","4424","4380"];
+  const LEAGUES=["4335","4328","4332","4331","4334","4480","4406","4350","4346","4351","4344","4337","4387","4391","4424","4380"];
   const API=id=>"https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id="+id;
   function sportKey(s){const m={"Soccer":"futbol","Basketball":"baloncesto","American Football":"futbol_americano",
     "Ice Hockey":"hockey_hielo","Baseball":"beisbol","Motorsport":"f1","Tennis":"tenis","Fighting":"mma",
@@ -300,6 +321,8 @@
   let EVENTOS=[];
   let lang=(navigator.language||"es").toLowerCase().startsWith("es")?"es":"en";
   let zonaActiva="auto",deporteActivo="todos",texto="",featuredId=null;
+  let BASE_EVENTOS=[],remoteTimer=null;
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
   // Escena de fondo del recuadro principal según el deporte
   const SCRIM="linear-gradient(180deg, rgba(6,10,16,.42) 0%, rgba(6,10,16,.66) 100%)";
@@ -378,7 +401,7 @@
     document.getElementById("btnEn").classList.toggle("on",lang==="en");
     document.getElementById("note").innerHTML=T().note;
     document.getElementById("search").placeholder=T().searchPh;
-    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v17<br>"+
+    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v18<br>"+
       '<img class="visit-counter" src="https://hits.sh/calaverasports.com.svg?style=flat-square&label='+(lang==="es"?"Visitas":"Visits")+'&color=37e07a&labelColor=0d1117" alt="" style="margin-top:9px;height:22px" onerror="this.style.display=\'none\'">';
     document.getElementById("afil").innerHTML=(lang==="es"
         ? '📺 <b>¿Verlo en tu tele?</b> Con un Fire TV Stick abres estas apps de deporte en tu televisor → '
@@ -453,8 +476,16 @@
     document.getElementById("count").textContent=filtrados.length>0?T().count(filtrados.length,sName(deporteActivo)[lang]):"";
 
     if(filtrados.length===0){
-      document.getElementById("list").innerHTML='<div class="empty"><span class="big">📅</span>'+
-        T().empty(sName(deporteActivo)[lang])+'</div>';return;
+      let ehtml;
+      if(q){
+        const url="https://www.google.com/search?q="+encodeURIComponent(T().query(texto.trim()));
+        ehtml='<div class="empty"><span class="big">🔎</span>'+
+          (lang==="es"?'No encontramos "'+esc(texto.trim())+'" en la agenda ahora mismo.':'We couldn\'t find "'+esc(texto.trim())+'" in the schedule right now.')+
+          '<div style="margin-top:14px"><a class="m-btn" href="'+url+'" target="_blank" rel="noopener noreferrer">▶ '+(lang==="es"?"Buscar dónde verlo":"Find where to watch")+'</a></div></div>';
+      }else{
+        ehtml='<div class="empty"><span class="big">📅</span>'+T().empty(sName(deporteActivo)[lang])+'</div>';
+      }
+      document.getElementById("list").innerHTML=ehtml;return;
     }
     const grupos={};
     filtrados.forEach(ev=>{const d=new Date(ev.utc);const dia=fmtDia.format(d);(grupos[dia]=grupos[dia]||[]).push({ev,d});});
@@ -490,6 +521,42 @@
 
   function renderAll(){ EVENTOS.forEach((e,i)=>e._id=i); renderHero(); renderList(); }
 
+  // Mapea un evento crudo de TheSportsDB al formato interno
+  function mapEvent(e){
+    if(!e.strTimestamp && !(e.dateEvent && e.strTime)) return null;
+    const iso=e.strTimestamp?(e.strTimestamp.replace(" ","T")+"Z"):(e.dateEvent+"T"+e.strTime+"Z");
+    const two=e.strHomeTeam&&e.strAwayTeam;
+    return {sport:sportKey(e.strSport),utc:iso,dur:130,comp:e.strLeague||"",
+      home:{n:e.strHomeTeam||e.strEvent,img:e.strHomeTeamBadge||""},
+      away:two?{n:e.strAwayTeam,img:e.strAwayTeamBadge||""}:null};
+  }
+  // Búsqueda MUNDIAL en vivo: cualquier equipo, cualquier deporte
+  function buscarMundial(qraw){
+    clearTimeout(remoteTimer);
+    const q=(qraw||"").trim();
+    if(q.length<3){ EVENTOS=BASE_EVENTOS.slice(); EVENTOS.forEach((e,i)=>e._id=i); return; }
+    remoteTimer=setTimeout(async()=>{
+      const c=document.getElementById("count");
+      if(c) c.textContent=(lang==="es"?"🔎 Buscando en todo el mundo…":"🔎 Searching worldwide…");
+      const B="https://www.thesportsdb.com/api/v1/json/3/";
+      let extra=[];
+      try{
+        const ts=await fetch(B+"searchteams.php?t="+encodeURIComponent(q)).then(r=>r.ok?r.json():null);
+        const teams=(ts&&ts.teams||[]).slice(0,5);
+        const lists=await Promise.allSettled(teams.map(t=>fetch(B+"eventsnext.php?id="+t.idTeam).then(r=>r.ok?r.json():null)));
+        const evs=[];
+        lists.forEach(r=>{ if(r.status==="fulfilled"&&r.value&&Array.isArray(r.value.events)) evs.push(...r.value.events); });
+        const mapped=evs.map(mapEvent).filter(Boolean);
+        const seen=new Set(BASE_EVENTOS.map(e=>e.home.n+"|"+e.utc));
+        mapped.forEach(e=>{ const k=e.home.n+"|"+e.utc; if(!seen.has(k)){ seen.add(k); extra.push(e); } });
+      }catch(err){ extra=[]; }
+      if(texto.trim()!==q) return; // el usuario siguió escribiendo: descartar
+      EVENTOS=[...BASE_EVENTOS, ...extra].sort((a,b)=>new Date(a.utc)-new Date(b.utc));
+      EVENTOS.forEach((e,i)=>e._id=i);
+      renderList();
+    },350);
+  }
+
   async function cargarDatos(){
     try{
       const res=await Promise.allSettled(LEAGUES.map(id=>fetch(API(id)).then(r=>r.ok?r.json():null)));
@@ -507,10 +574,10 @@
         }
       });
       if(eventos.length===0)throw new Error("vacío");
-      EVENTOS=eventos.sort((a,b)=>new Date(a.utc)-new Date(b.utc)).slice(0,60);
+      BASE_EVENTOS=eventos.sort((a,b)=>new Date(a.utc)-new Date(b.utc)).slice(0,60);EVENTOS=BASE_EVENTOS.slice();
       const s=document.getElementById("status");s.className="status ok";s.textContent=T().statusOk(EVENTOS.length);
     }catch(err){
-      EVENTOS=buildDemo();
+      BASE_EVENTOS=buildDemo();EVENTOS=BASE_EVENTOS.slice();
       const s=document.getElementById("status");s.className="status warn";s.textContent=T().statusWarn;
     }
     renderAll();
@@ -524,7 +591,7 @@
   document.getElementById("btnEs").addEventListener("click",()=>setLang("es"));
   document.getElementById("btnEn").addEventListener("click",()=>setLang("en"));
   document.getElementById("zoneSelect").addEventListener("change",e=>{zonaActiva=e.target.value;renderAll();});
-  document.getElementById("search").addEventListener("input",e=>{texto=e.target.value;renderList();});
+  document.getElementById("search").addEventListener("input",e=>{texto=e.target.value;EVENTOS=BASE_EVENTOS.slice();EVENTOS.forEach((ev,i)=>ev._id=i);renderList();buscarMundial(texto);});
 
   // muro de marca de fondo: "calaveraSports" en muchas tipografías y tamaños
   function fillBrandwall(){
