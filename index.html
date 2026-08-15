@@ -340,7 +340,20 @@
   const nombreZona=tz=>{try{const p=tz.split("/");return p[p.length-1].replace(/_/g," ");}catch(e){return tz;}};
   const estaEnVivo=ev=>{const i=new Date(ev.utc).getTime();const f=i+(ev.dur||120)*60000;const n=Date.now();return n>=i&&n<=f;};
   const titulo=ev=>ev.away?ev.home.n+" vs "+ev.away.n:ev.home.n;
-  const enlaceVer=ev=>"https://www.google.com/search?q="+encodeURIComponent(T().query(titulo(ev)));
+  // plataforma oficial por deporte; si no hay una clara, cae en la búsqueda inteligente de Google
+  const OFICIAL={
+    f1:"https://f1tv.formula1.com/",
+    motogp:"https://www.motogp.com/en/videopass",
+    beisbol:"https://www.mlb.com/tv",
+    baloncesto:"https://www.nba.com/watch",
+    futbol_americano:"https://www.nfl.com/plus/",
+    hockey_hielo:"https://www.nhl.com/tv",
+    tenis:"https://www.tennistv.com/",
+    mma:"https://www.ufc.com/how-to-watch",
+    boxeo:"https://www.dazn.com/",
+    golf:"https://www.pgatour.com/watch"
+  };
+  const enlaceVer=ev=>OFICIAL[ev.sport]||("https://www.google.com/search?q="+encodeURIComponent(T().query(titulo(ev))));
 
   function monogram(name){
     const clean=name.replace(/^(FC|CF|AC|SC|CD)\s+/i,"").trim();
@@ -370,7 +383,8 @@
     document.getElementById("btnEn").classList.toggle("on",lang==="en");
     document.getElementById("note").innerHTML=T().note;
     document.getElementById("search").placeholder=T().searchPh;
-    document.getElementById("footer").innerHTML=T().footer+"<br>CalaveraSports — v14";
+    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v15<br>"+
+      '<img class="visit-counter" src="https://hits.sh/calaverasports.com.svg?style=flat-square&label='+(lang==="es"?"Visitas":"Visits")+'&color=37e07a&labelColor=0d1117" alt="" style="margin-top:9px;height:22px" onerror="this.style.display=\'none\'">';
     const sel=document.getElementById("zoneSelect");
     sel.innerHTML=ZONAS.map(z=>'<option value="'+z.v+'">'+(z.v==="auto"?T().detect:z.label)+'</option>').join("");
     sel.value=zonaActiva;
