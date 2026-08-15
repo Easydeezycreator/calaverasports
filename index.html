@@ -163,6 +163,11 @@
   .note{background:rgba(74,163,255,.08);border:1px solid rgba(74,163,255,.22);border-radius:12px;
     padding:18px 22px;font-size:15.5px;color:#bcd6f5;margin-bottom:16px}
   .note b{color:#e2eeff}
+  .afil{max-width:1160px;margin:16px auto 0;padding:14px 20px;border-radius:12px;
+    background:rgba(55,224,122,.06);border:1px solid rgba(55,224,122,.25);
+    font-size:14.5px;color:var(--text);line-height:1.5}
+  .afil a{color:#37e07a;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(55,224,122,.5)}
+  .afil-disc{margin-top:7px;font-size:11.5px;color:var(--muted)}
 
   @media (max-width:560px){
     .hero-body{padding:18px 8px 6px}
@@ -208,6 +213,8 @@
 
 </div>
 
+<div class="afil" id="afil"></div>
+
 <footer id="footer"></footer>
 
 <script>
@@ -221,7 +228,7 @@
       liveNow:n=>n>0?n+" en directo":"Próximos",count:(n,s)=>n+" partido"+(n>1?"s":"")+" · "+s,
       empty:s=>"No hay partidos de "+s+" próximamente.",btn:"Ver",tagLive:"Live",
       footer:"CalaveraSports · guía legal de dónde ver el deporte en directo",
-      query:m=>"dónde ver "+m+" en directo online",locale:"es"},
+      query:m=>"dónde ver "+m+" gratis en directo",locale:"es"},
     en:{tagline:"Every sport · in your local time",
       statusOk:n=>"✅ Real data · "+n+" upcoming games",
       statusWarn:"👀 Preview with a sample schedule. Published or opened in your browser it loads all real games and team badges.",
@@ -231,7 +238,7 @@
       liveNow:n=>n>0?n+" live":"Upcoming",count:(n,s)=>n+" game"+(n>1?"s":"")+" · "+s,
       empty:s=>"No "+s+" games coming up.",btn:"Watch",tagLive:"Live",
       footer:"CalaveraSports · legal guide to where to watch live sports",
-      query:m=>"where to watch "+m+" live online",locale:"en"}
+      query:m=>"where to watch "+m+" free live",locale:"en"}
   };
 
   const ZONAS=[{v:"auto"},{v:"Europe/Madrid",label:"🇪🇸 España (Madrid)"},
@@ -340,20 +347,8 @@
   const nombreZona=tz=>{try{const p=tz.split("/");return p[p.length-1].replace(/_/g," ");}catch(e){return tz;}};
   const estaEnVivo=ev=>{const i=new Date(ev.utc).getTime();const f=i+(ev.dur||120)*60000;const n=Date.now();return n>=i&&n<=f;};
   const titulo=ev=>ev.away?ev.home.n+" vs "+ev.away.n:ev.home.n;
-  // plataforma oficial por deporte; si no hay una clara, cae en la búsqueda inteligente de Google
-  const OFICIAL={
-    f1:"https://f1tv.formula1.com/",
-    motogp:"https://www.motogp.com/en/videopass",
-    beisbol:"https://www.mlb.com/tv",
-    baloncesto:"https://www.nba.com/watch",
-    futbol_americano:"https://www.nfl.com/plus/",
-    hockey_hielo:"https://www.nhl.com/tv",
-    tenis:"https://www.tennistv.com/",
-    mma:"https://www.ufc.com/how-to-watch",
-    boxeo:"https://www.dazn.com/",
-    golf:"https://www.pgatour.com/watch"
-  };
-  const enlaceVer=ev=>OFICIAL[ev.sport]||("https://www.google.com/search?q="+encodeURIComponent(T().query(titulo(ev))));
+  // botón "gratis primero": busca las opciones GRATIS y legales de cada país (Google etiqueta las gratis)
+  const enlaceVer=ev=>"https://www.google.com/search?q="+encodeURIComponent(T().query(titulo(ev)));
 
   function monogram(name){
     const clean=name.replace(/^(FC|CF|AC|SC|CD)\s+/i,"").trim();
@@ -383,8 +378,16 @@
     document.getElementById("btnEn").classList.toggle("on",lang==="en");
     document.getElementById("note").innerHTML=T().note;
     document.getElementById("search").placeholder=T().searchPh;
-    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v15<br>"+
+    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v16<br>"+
       '<img class="visit-counter" src="https://hits.sh/calaverasports.com.svg?style=flat-square&label='+(lang==="es"?"Visitas":"Visits")+'&color=37e07a&labelColor=0d1117" alt="" style="margin-top:9px;height:22px" onerror="this.style.display=\'none\'">';
+    document.getElementById("afil").innerHTML=(lang==="es"
+        ? '📺 <b>¿Verlo en tu tele?</b> Con un Fire TV Stick abres estas apps de deporte en tu televisor → '
+        : '📺 <b>Watch on your TV?</b> A Fire TV Stick opens these sports apps on your television → ')
+      + '<a href="https://www.amazon.es/s?k=fire+tv+stick&tag=calaverasport-21" target="_blank" rel="sponsored nofollow noopener">'
+      + (lang==="es"?'verlo en Amazon':'see it on Amazon')+'</a>'
+      + '<div class="afil-disc">'+(lang==="es"
+          ? 'Como Afiliado de Amazon, calaveraSports gana por las compras adscritas que cumplan los requisitos.'
+          : 'As an Amazon Associate, calaveraSports earns from qualifying purchases.')+'</div>';
     const sel=document.getElementById("zoneSelect");
     sel.innerHTML=ZONAS.map(z=>'<option value="'+z.v+'">'+(z.v==="auto"?T().detect:z.label)+'</option>').join("");
     sel.value=zonaActiva;
