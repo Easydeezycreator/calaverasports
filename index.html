@@ -93,7 +93,7 @@
     padding:12px 26px;border-radius:12px;box-shadow:0 8px 20px rgba(43,224,122,.3);transition:.15s}
   .hero-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
 
-  .status{font-size:14.5px;padding:14px 18px;border-radius:12px;margin-bottom:16px;border:1px solid var(--line)}
+  .status{display:none !important}
   .status.ok{background:rgba(43,224,122,.10);color:#82efb0;border-color:rgba(43,224,122,.3)}
   .status.warn{background:rgba(227,179,65,.10);color:#f0d071;border-color:rgba(227,179,65,.3)}
 
@@ -280,7 +280,7 @@
     {k:"natacion",es:"Natación",en:"Swimming"},{k:"otros",es:"Otros",en:"Other"}];
   const sName=k=>{const s=SPORTS.find(x=>x.k===k)||SPORTS[SPORTS.length-1];return s;};
 
-  const LEAGUES=["4335","4328","4332","4331","4334","4480","4406","4350","4346","4351","4344","4337","4387","4391","4424","4380"];
+  const LEAGUES=["4328","4329","4330","4331","4332","4334","4335","4336","4337","4338","4339","4340","4344","4346","4347","4350","4351","4354","4355","4356","4358","4359","4394","4396","4399","4400","4406","4408","4480","4387","4391","4424","4380"];
   const API=id=>"https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id="+id;
   function sportKey(s){const m={"Soccer":"futbol","Basketball":"baloncesto","American Football":"futbol_americano",
     "Ice Hockey":"hockey_hielo","Baseball":"beisbol","Motorsport":"f1","Tennis":"tenis","Fighting":"mma",
@@ -401,7 +401,7 @@
     document.getElementById("btnEn").classList.toggle("on",lang==="en");
     document.getElementById("note").innerHTML=T().note;
     document.getElementById("search").placeholder=T().searchPh;
-    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v18<br>"+
+    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v20<br>"+
       '<img class="visit-counter" src="https://hits.sh/calaverasports.com.svg?style=flat-square&label='+(lang==="es"?"Visitas":"Visits")+'&color=37e07a&labelColor=0d1117" alt="" style="margin-top:9px;height:22px" onerror="this.style.display=\'none\'">';
     document.getElementById("afil").innerHTML=(lang==="es"
         ? '📺 <b>¿Verlo en tu tele?</b> Con un Fire TV Stick abres estas apps de deporte en tu televisor → '
@@ -574,7 +574,7 @@
         }
       });
       if(eventos.length===0)throw new Error("vacío");
-      BASE_EVENTOS=eventos.sort((a,b)=>new Date(a.utc)-new Date(b.utc)).slice(0,60);EVENTOS=BASE_EVENTOS.slice();
+      BASE_EVENTOS=eventos.sort((a,b)=>new Date(a.utc)-new Date(b.utc)).slice(0,400);EVENTOS=BASE_EVENTOS.slice();
       const s=document.getElementById("status");s.className="status ok";s.textContent=T().statusOk(EVENTOS.length);
     }catch(err){
       BASE_EVENTOS=buildDemo();EVENTOS=BASE_EVENTOS.slice();
