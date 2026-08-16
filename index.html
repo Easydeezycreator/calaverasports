@@ -286,7 +286,22 @@
     {k:"natacion",es:"Natación",en:"Swimming"},{k:"otros",es:"Otros",en:"Other"}];
   const sName=k=>{const s=SPORTS.find(x=>x.k===k)||SPORTS[SPORTS.length-1];return s;};
 
-  const LEAGUES=["4328","4329","4330","4331","4332","4334","4335","4336","4337","4338","4339","4340","4344","4346","4347","4350","4351","4354","4355","4356","4358","4359","4394","4396","4399","4400","4406","4480","4387","4408","4391","4405","4424","4380","4419","4370","4407","4443","4414","4415","4714","4446","4425","4426"];
+  const SPORT_LEAGUES={
+    futbol:["4335","4328","4332","4331","4334","4406","4350","4351","4344","4346","4480","4329","4330","4336","4337","4338","4339","4340","4347","4354","4355","4356","4358","4359","4394","4396","4399","4400"],
+    baloncesto:["4387","4408"],
+    futbol_americano:["4391","4405"],
+    beisbol:["4424"],
+    hockey_hielo:["4380","4419"],
+    f1:["4370"],
+    motogp:["4407"],
+    mma:["4443"],
+    rugby:["4414","4415","4714","4446"],
+    golf:["4425","4426"]
+  };
+  // Carga inicial (página principal · juegos del día): fútbol top + un referente de cada deporte
+  const LEAGUES=["4335","4328","4332","4331","4334","4406","4350","4351","4344","4346","4480","4387","4391","4424","4380","4370","4407","4443"];
+  const loadedIds=new Set(LEAGUES);
+  const loadedSports=new Set();
   const API=id=>"https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id="+id;
   function sportKey(s,league){const L=(league||"").toLowerCase();
     if(s==="Motorsport") return (L.includes("motogp")||L.includes("moto2")||L.includes("moto3"))?"motogp":"f1";
@@ -410,7 +425,7 @@
     document.getElementById("btnEn").classList.toggle("on",lang==="en");
     document.getElementById("note").innerHTML=T().note;
     document.getElementById("search").placeholder=T().searchPh;
-    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v22<br>"+
+    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v23<br>"+
       '<img class="visit-counter" src="https://hits.sh/calaverasports.com.svg?style=flat-square&label='+(lang==="es"?"Visitas":"Visits")+'&color=37e07a&labelColor=0d1117" alt="" style="margin-top:9px;height:22px" onerror="this.style.display=\'none\'">';
     document.getElementById("afil").innerHTML=(lang==="es"
         ? '📺 <b>¿Verlo en tu tele?</b> Con un Fire TV Stick abres estas apps de deporte en tu televisor → '
@@ -431,7 +446,12 @@
     document.getElementById("filters").innerHTML=SPORTS.map(s=>
       '<div class="chip'+(s.k===deporteActivo?' active':'')+'" data-k="'+s.k+'">'+s[lang]+'</div>').join("");
     document.querySelectorAll("#filters .chip").forEach(c=>c.addEventListener("click",()=>{
-      deporteActivo=c.dataset.k;featuredId=null;renderFilters();renderAll();}));
+      deporteActivo=c.dataset.k;featuredId=null;renderFilters();
+      if(deporteActivo!=="todos"&&!loadedSports.has(deporteActivo)){
+        const lc=document.getElementById("count"); if(lc) lc.textContent=(lang==="es"?"🔎 Cargando "+sName(deporteActivo)[lang]+"…":"🔎 Loading "+sName(deporteActivo)[lang]+"…");
+        ensureSport(deporteActivo).then(()=>{ if(deporteActivo===c.dataset.k) renderAll(); });
+      }
+      renderAll();}));
   }
 
   function renderHero(){
@@ -479,11 +499,16 @@
     const fmtDia=new Intl.DateTimeFormat(T().locale,{weekday:"long",day:"numeric",month:"short",timeZone:tz});
 
     const q=texto.trim().toLowerCase();
-    const filtrados=EVENTOS.filter(ev=>{
+    let filtrados=EVENTOS.filter(ev=>{
       const okD=deporteActivo==="todos"||ev.sport===deporteActivo;
       const txt=(titulo(ev)+" "+ev.comp+" "+sName(ev.sport)[lang]).toLowerCase();
       return okD&&(!q||txt.includes(q));
     });
+    // Página principal: solo los juegos de HOY (en la zona horaria elegida)
+    if(!q && deporteActivo==="todos"){
+      const hoy=new Intl.DateTimeFormat("en-CA",{timeZone:tz}).format(new Date());
+      filtrados=filtrados.filter(ev=>new Intl.DateTimeFormat("en-CA",{timeZone:tz}).format(new Date(ev.utc))===hoy);
+    }
     document.getElementById("count").textContent=filtrados.length>0?T().count(filtrados.length,sName(deporteActivo)[lang]):"";
 
     if(filtrados.length===0){
@@ -494,7 +519,8 @@
           (lang==="es"?'No encontramos "'+esc(texto.trim())+'" en la agenda ahora mismo.':'We couldn\'t find "'+esc(texto.trim())+'" in the schedule right now.')+
           '<div style="margin-top:14px"><a class="m-btn" href="'+url+'" target="_blank" rel="noopener noreferrer">▶ '+(lang==="es"?"Buscar dónde verlo":"Find where to watch")+'</a></div></div>';
       }else{
-        ehtml='<div class="empty"><span class="big">📅</span>'+T().empty(sName(deporteActivo)[lang])+'</div>';
+        const msg=(deporteActivo==="todos")?(lang==="es"?"No hay partidos para hoy. Usa el buscador para encontrar cualquier equipo del mundo.":"No games today. Use the search to find any team worldwide."):T().empty(sName(deporteActivo)[lang]);
+        ehtml='<div class="empty"><span class="big">📅</span>'+msg+'</div>';
       }
       document.getElementById("list").innerHTML=ehtml;return;
     }
@@ -568,28 +594,37 @@
     },350);
   }
 
+  async function fetchLeagues(ids){
+    const res=[];
+    for(let i=0;i<ids.length;i+=8){
+      const chunk=ids.slice(i,i+8);
+      const part=await Promise.allSettled(chunk.map(id=>fetch(API(id)).then(r=>r.ok?r.json():null)));
+      res.push(...part);
+      if(i+8<ids.length) await new Promise(r=>setTimeout(r,220));
+    }
+    const out=[];
+    res.forEach(r=>{ if(r.status==="fulfilled"&&r.value&&Array.isArray(r.value.events)){
+      r.value.events.forEach(e=>{ const m=mapEvent(e); if(m) out.push(m); }); } });
+    return out;
+  }
+  // Carga bajo demanda de un deporte al abrir su chip
+  async function ensureSport(sk){
+    if(loadedSports.has(sk)) return;
+    loadedSports.add(sk);
+    const ids=(SPORT_LEAGUES[sk]||[]).filter(id=>!loadedIds.has(id));
+    if(!ids.length) return;
+    ids.forEach(id=>loadedIds.add(id));
+    const nuevos=await fetchLeagues(ids);
+    if(nuevos.length){
+      const seen=new Set(BASE_EVENTOS.map(e=>e.home.n+"|"+e.utc));
+      nuevos.forEach(e=>{ const k=e.home.n+"|"+e.utc; if(!seen.has(k)){ seen.add(k); BASE_EVENTOS.push(e); } });
+      BASE_EVENTOS.sort((a,b)=>new Date(a.utc)-new Date(b.utc));
+      if(!texto.trim()){ EVENTOS=BASE_EVENTOS.slice(); EVENTOS.forEach((e,i)=>e._id=i); }
+    }
+  }
   async function cargarDatos(){
     try{
-      const res=[];
-      for(let i=0;i<LEAGUES.length;i+=8){
-        const chunk=LEAGUES.slice(i,i+8);
-        const part=await Promise.allSettled(chunk.map(id=>fetch(API(id)).then(r=>r.ok?r.json():null)));
-        res.push(...part);
-        if(i+8<LEAGUES.length) await new Promise(r=>setTimeout(r,220));
-      }
-      const eventos=[];
-      res.forEach(r=>{
-        if(r.status==="fulfilled"&&r.value&&Array.isArray(r.value.events)){
-          r.value.events.forEach(e=>{
-            if(!e.strTimestamp&&!(e.dateEvent&&e.strTime))return;
-            const iso=e.strTimestamp?(e.strTimestamp.replace(" ","T")+"Z"):(e.dateEvent+"T"+e.strTime+"Z");
-            const two=e.strHomeTeam&&e.strAwayTeam;
-            eventos.push({sport:sportKey(e.strSport,e.strLeague),utc:iso,dur:130,comp:e.strLeague||"",
-              home:{n:e.strHomeTeam||e.strEvent,img:e.strHomeTeamBadge||""},
-              away:two?{n:e.strAwayTeam,img:e.strAwayTeamBadge||""}:null});
-          });
-        }
-      });
+      const eventos=await fetchLeagues(LEAGUES);
       if(eventos.length===0)throw new Error("vacío");
       BASE_EVENTOS=eventos.sort((a,b)=>new Date(a.utc)-new Date(b.utc)).slice(0,400);EVENTOS=BASE_EVENTOS.slice();
       const s=document.getElementById("status");s.className="status ok";s.textContent=T().statusOk(EVENTOS.length);
