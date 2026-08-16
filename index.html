@@ -302,7 +302,9 @@
   const LEAGUES=["4335","4328","4332","4331","4334","4406","4350","4351","4344","4346","4480","4387","4391","4424","4380","4370","4407","4443"];
   const loadedIds=new Set(LEAGUES);
   const loadedSports=new Set();
-  const API=id=>"https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id="+id;
+  const API=id=>"https://www.thesportsdb.com/api/v1/json/9482415391/eventsnextleague.php?id="+id;
+  const API_DAY=(d,s)=>"https://www.thesportsdb.com/api/v1/json/9482415391/eventsday.php?d="+d+"&s="+encodeURIComponent(s);
+  const SPORTS_DAY=["Soccer","Basketball","American Football","Baseball","Ice Hockey","Motorsport","Fighting","Tennis","Rugby","Golf","Cycling","Volleyball"];
   function sportKey(s,league){const L=(league||"").toLowerCase();
     if(s==="Motorsport") return (L.includes("motogp")||L.includes("moto2")||L.includes("moto3"))?"motogp":"f1";
     if(s==="Fighting") return L.includes("box")?"boxeo":"mma";
@@ -408,7 +410,7 @@
     const cls=big?"crest-lg":"crest";
     if(team.img){
       const safe=String(team.n).replace(/'/g,"\\'");
-      return '<img class="'+cls+'" src="'+team.img+'" alt="" onerror="badgeFail(this,\''+safe+'\','+(big?'true':'false')+')">';
+      return '<img class="'+cls+'" loading="lazy" src="'+team.img+'" alt="" onerror="badgeFail(this,\''+safe+'\','+(big?'true':'false')+')">';
     }
     return crestMono(team.n,big);
   }
@@ -425,7 +427,7 @@
     document.getElementById("btnEn").classList.toggle("on",lang==="en");
     document.getElementById("note").innerHTML=T().note;
     document.getElementById("search").placeholder=T().searchPh;
-    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v23<br>"+
+    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v24<br>"+
       '<img class="visit-counter" src="https://hits.sh/calaverasports.com.svg?style=flat-square&label='+(lang==="es"?"Visitas":"Visits")+'&color=37e07a&labelColor=0d1117" alt="" style="margin-top:9px;height:22px" onerror="this.style.display=\'none\'">';
     document.getElementById("afil").innerHTML=(lang==="es"
         ? '📺 <b>¿Verlo en tu tele?</b> Con un Fire TV Stick abres estas apps de deporte en tu televisor → '
@@ -446,12 +448,7 @@
     document.getElementById("filters").innerHTML=SPORTS.map(s=>
       '<div class="chip'+(s.k===deporteActivo?' active':'')+'" data-k="'+s.k+'">'+s[lang]+'</div>').join("");
     document.querySelectorAll("#filters .chip").forEach(c=>c.addEventListener("click",()=>{
-      deporteActivo=c.dataset.k;featuredId=null;renderFilters();
-      if(deporteActivo!=="todos"&&!loadedSports.has(deporteActivo)){
-        const lc=document.getElementById("count"); if(lc) lc.textContent=(lang==="es"?"🔎 Cargando "+sName(deporteActivo)[lang]+"…":"🔎 Loading "+sName(deporteActivo)[lang]+"…");
-        ensureSport(deporteActivo).then(()=>{ if(deporteActivo===c.dataset.k) renderAll(); });
-      }
-      renderAll();}));
+      deporteActivo=c.dataset.k;featuredId=null;renderFilters();renderAll();}));
   }
 
   function renderHero(){
@@ -504,10 +501,12 @@
       const txt=(titulo(ev)+" "+ev.comp+" "+sName(ev.sport)[lang]).toLowerCase();
       return okD&&(!q||txt.includes(q));
     });
-    // Página principal: solo los juegos de HOY (en la zona horaria elegida)
-    if(!q && deporteActivo==="todos"){
-      const hoy=new Intl.DateTimeFormat("en-CA",{timeZone:tz}).format(new Date());
-      filtrados=filtrados.filter(ev=>new Intl.DateTimeFormat("en-CA",{timeZone:tz}).format(new Date(ev.utc))===hoy);
+    // Principal: solo HOY · pestaña de deporte: hoy en adelante (en la zona horaria elegida)
+    if(!q){
+      const fday=new Intl.DateTimeFormat("en-CA",{timeZone:tz});
+      const hoy=fday.format(new Date());
+      if(deporteActivo==="todos") filtrados=filtrados.filter(ev=>fday.format(new Date(ev.utc))===hoy);
+      else filtrados=filtrados.filter(ev=>fday.format(new Date(ev.utc))>=hoy);
     }
     document.getElementById("count").textContent=filtrados.length>0?T().count(filtrados.length,sName(deporteActivo)[lang]):"";
 
@@ -524,8 +523,11 @@
       }
       document.getElementById("list").innerHTML=ehtml;return;
     }
+    const CAP=300;
+    const total=filtrados.length;
+    const vistos=total>CAP?filtrados.slice(0,CAP):filtrados;
     const grupos={};
-    filtrados.forEach(ev=>{const d=new Date(ev.utc);const dia=fmtDia.format(d);(grupos[dia]=grupos[dia]||[]).push({ev,d});});
+    vistos.forEach(ev=>{const d=new Date(ev.utc);const dia=fmtDia.format(d);(grupos[dia]=grupos[dia]||[]).push({ev,d});});
     let html="";
     Object.keys(grupos).forEach(dia=>{
       html+='<div class="day">'+dia+'</div>';
@@ -543,6 +545,7 @@
         '</div>';
       });
     });
+    if(total>CAP){ html+='<div class="empty" style="padding:16px 8px"><span>'+(lang==="es"?"Mostrando "+CAP+" de "+total+" partidos. Filtra por deporte arriba o busca tu equipo.":"Showing "+CAP+" of "+total+" games. Filter by sport above or search your team.")+'</span></div>'; }
     document.getElementById("list").innerHTML=html;
     // clic en un partido -> pasa al recuadro principal
     document.querySelectorAll("#list .match").forEach(el=>{
@@ -575,7 +578,7 @@
     remoteTimer=setTimeout(async()=>{
       const c=document.getElementById("count");
       if(c) c.textContent=(lang==="es"?"🔎 Buscando en todo el mundo…":"🔎 Searching worldwide…");
-      const B="https://www.thesportsdb.com/api/v1/json/3/";
+      const B="https://www.thesportsdb.com/api/v1/json/9482415391/";
       let extra=[];
       try{
         const ts=await fetch(B+"searchteams.php?t="+encodeURIComponent(q)).then(r=>r.ok?r.json():null);
@@ -624,9 +627,23 @@
   }
   async function cargarDatos(){
     try{
-      const eventos=await fetchLeagues(LEAGUES);
+      const now=new Date();
+      const ymd=d=>d.toISOString().slice(0,10);
+      const days=[ymd(new Date(now.getTime()-86400000)),ymd(now),ymd(new Date(now.getTime()+86400000))];
+      const urls=[];
+      days.forEach(d=>SPORTS_DAY.forEach(s=>urls.push(API_DAY(d,s))));
+      const res=[];
+      for(let i=0;i<urls.length;i+=10){
+        const part=await Promise.allSettled(urls.slice(i,i+10).map(u=>fetch(u).then(r=>r.ok?r.json():null)));
+        res.push(...part);
+        if(i+10<urls.length) await new Promise(r=>setTimeout(r,150));
+      }
+      const eventos=[];
+      res.forEach(r=>{ if(r.status==="fulfilled"&&r.value&&Array.isArray(r.value.events)){ r.value.events.forEach(e=>{const m=mapEvent(e); if(m) eventos.push(m);}); } });
       if(eventos.length===0)throw new Error("vacío");
-      BASE_EVENTOS=eventos.sort((a,b)=>new Date(a.utc)-new Date(b.utc)).slice(0,400);EVENTOS=BASE_EVENTOS.slice();
+      const seen=new Set(),uniq=[];
+      eventos.forEach(e=>{const k=e.home.n+"|"+e.utc; if(!seen.has(k)){seen.add(k);uniq.push(e);}});
+      BASE_EVENTOS=uniq.sort((a,b)=>new Date(a.utc)-new Date(b.utc));EVENTOS=BASE_EVENTOS.slice();
       const s=document.getElementById("status");s.className="status ok";s.textContent=T().statusOk(EVENTOS.length);
     }catch(err){
       BASE_EVENTOS=buildDemo();EVENTOS=BASE_EVENTOS.slice();
