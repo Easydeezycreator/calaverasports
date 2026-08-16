@@ -104,6 +104,10 @@
   .search:focus{outline:none;border-color:rgba(43,224,122,.5)}
   select#zoneSelect{background:var(--panel);color:var(--text);border:1px solid var(--line);
     border-radius:12px;padding:12px 12px;font-family:var(--font);font-size:14px;cursor:pointer}
+  .zonesearch{background:var(--panel);color:var(--text);border:1px solid var(--line);
+    border-radius:12px;padding:12px 14px;font-family:var(--font);font-size:14px;min-width:150px}
+  .zonesearch:focus{outline:none;border-color:rgba(55,224,122,.5)}
+  .zonesearch::placeholder{color:var(--muted)}
 
   .filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;scrollbar-width:thin}
   .filters::-webkit-scrollbar{height:6px}.filters::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
@@ -207,6 +211,8 @@
   <div class="controls">
     <input id="search" class="search" type="text">
     <select id="zoneSelect"></select>
+    <input id="zoneSearch" class="zonesearch" type="text" list="tzlist" autocomplete="off">
+    <datalist id="tzlist"></datalist>
   </div>
 
   <div class="filters-scroll"><div id="filters" class="filters"></div><span class="scroll-cue">›</span></div>
@@ -223,7 +229,7 @@
       statusOk:n=>"✅ Datos reales · "+n+" partidos próximos",
       statusWarn:"👀 Vista previa con agenda de muestra. Publicada o abierta en tu navegador cargará todos los partidos y escudos reales.",
       note:"<b>Guía legal.</b> Indexamos dónde ver cada partido; el botón <b>Ver</b> lleva a la retransmisión oficial. No alojamos señal.",
-      viewing:"Zona horaria:",searchPh:"Buscar equipo, deporte o competición…",detect:"📍 Detectar mi ubicación",
+      viewing:"Zona horaria:",searchPh:"Buscar equipo, deporte o competición…",detect:"📍 Detectar mi ubicación",tzSearch:"🌍 ¿Otra ciudad? escríbela",
       featured:"Partido destacado",live:"En directo",watch:"Ver ahora",
       liveNow:n=>n>0?n+" en directo":"Próximos",count:(n,s)=>n+" partido"+(n>1?"s":"")+" · "+s,
       empty:s=>"No hay partidos de "+s+" próximamente.",btn:"Ver",tagLive:"Live",
@@ -233,7 +239,7 @@
       statusOk:n=>"✅ Real data · "+n+" upcoming games",
       statusWarn:"👀 Preview with a sample schedule. Published or opened in your browser it loads all real games and team badges.",
       note:"<b>Legal guide.</b> We index where to watch each game; the <b>Watch</b> button opens the official broadcast. We don't host any stream.",
-      viewing:"Time zone:",searchPh:"Search team, sport or competition…",detect:"📍 Detect my location",
+      viewing:"Time zone:",searchPh:"Search team, sport or competition…",detect:"📍 Detect my location",tzSearch:"🌍 Other city? type it",
       featured:"Featured match",live:"Live",watch:"Watch now",
       liveNow:n=>n>0?n+" live":"Upcoming",count:(n,s)=>n+" game"+(n>1?"s":"")+" · "+s,
       empty:s=>"No "+s+" games coming up.",btn:"Watch",tagLive:"Live",
@@ -401,7 +407,7 @@
     document.getElementById("btnEn").classList.toggle("on",lang==="en");
     document.getElementById("note").innerHTML=T().note;
     document.getElementById("search").placeholder=T().searchPh;
-    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v20<br>"+
+    document.getElementById("footer").innerHTML=T().footer+"<br>calaveraSports — v21<br>"+
       '<img class="visit-counter" src="https://hits.sh/calaverasports.com.svg?style=flat-square&label='+(lang==="es"?"Visitas":"Visits")+'&color=37e07a&labelColor=0d1117" alt="" style="margin-top:9px;height:22px" onerror="this.style.display=\'none\'">';
     document.getElementById("afil").innerHTML=(lang==="es"
         ? '📺 <b>¿Verlo en tu tele?</b> Con un Fire TV Stick abres estas apps de deporte en tu televisor → '
@@ -414,6 +420,8 @@
     const sel=document.getElementById("zoneSelect");
     sel.innerHTML=ZONAS.map(z=>'<option value="'+z.v+'">'+(z.v==="auto"?T().detect:z.label)+'</option>').join("");
     sel.value=zonaActiva;
+    const zs=document.getElementById("zoneSearch"); if(zs){ zs.placeholder=T().tzSearch; }
+    fillTz();
   }
 
   function renderFilters(){
@@ -591,6 +599,25 @@
   document.getElementById("btnEs").addEventListener("click",()=>setLang("es"));
   document.getElementById("btnEn").addEventListener("click",()=>setLang("en"));
   document.getElementById("zoneSelect").addEventListener("change",e=>{zonaActiva=e.target.value;renderAll();});
+  function fillTz(){
+    const dl=document.getElementById("tzlist"); if(!dl||dl.dataset.done)return;
+    let zones=[]; try{ zones=Intl.supportedValuesOf("timeZone"); }catch(e){ zones=[]; }
+    dl.innerHTML=zones.map(z=>'<option value="'+z+'">').join(""); dl.dataset.done="1";
+  }
+  document.getElementById("zoneSearch").addEventListener("change",e=>{
+    let v=e.target.value.trim(); if(!v)return;
+    let ok=false; try{ new Intl.DateTimeFormat("en",{timeZone:v}); ok=true; }catch(_){}
+    if(!ok){ let zones=[]; try{zones=Intl.supportedValuesOf("timeZone");}catch(_){}
+      const hit=zones.find(z=>z.toLowerCase().replace(/_/g," ").includes(v.toLowerCase()));
+      if(hit){ v=hit; e.target.value=hit; ok=true; } }
+    if(ok){ zonaActiva=v;
+      const sel=document.getElementById("zoneSelect");
+      let opt=sel.querySelector("option[data-custom]");
+      if(!opt){ opt=document.createElement("option"); opt.setAttribute("data-custom","1"); sel.appendChild(opt); }
+      opt.value=v; opt.textContent="📍 "+v.split("/").pop().replace(/_/g," "); sel.value=v;
+      renderAll();
+    }
+  });
   document.getElementById("search").addEventListener("input",e=>{texto=e.target.value;EVENTOS=BASE_EVENTOS.slice();EVENTOS.forEach((ev,i)=>ev._id=i);renderList();buscarMundial(texto);});
 
   // muro de marca de fondo: "calaveraSports" en muchas tipografías y tamaños
